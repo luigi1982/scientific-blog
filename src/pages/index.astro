@@ -1,17 +1,39 @@
 ---
+import BaseLayout from "../layouts/BaseLayout.astro";
 
+const postModules = import.meta.glob("./blog/*.mdx", { eager: true });
+
+console.log(postModules)
+
+const posts = Object.entries(postModules)
+  .map(([path, post]) => {
+    const slug = path
+      .replace("./", "")
+      .replace(".mdx", "");
+
+    return {
+      url: `/blog/${slug}/`,
+      title: post.frontmatter.title,
+      date: post.frontmatter.date,
+    };
+  })
+  .sort(
+    (a, b) =>
+      new Date(b.date).valueOf() -
+      new Date(a.date).valueOf()
+  );
 ---
 
-<html lang="en">
-	<head>
-		<meta charset="utf-8" />
-		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-		<link rel="icon" href="/favicon.ico" />
-		<meta name="viewport" content="width=device-width" />
-		<meta name="generator" content={Astro.generator} />
-		<title>Astro</title>
-	</head>
-	<body>
-		<h1>Astro</h1>
-	</body>
-</html>
+<BaseLayout title="Blog">
+  <h1>Blog</h1>
+
+  <ul>
+    {posts.map((post) => (
+      <li>
+        <a href={post.url}>{post.title}</a>
+        <br />
+        <small>{post.date}</small>
+      </li>
+    ))}
+  </ul>
+</BaseLayout>
