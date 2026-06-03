@@ -26,7 +26,7 @@ The dataset underwent expert pathological analysis for the extraction and labeli
 
 
 <Figure
-  src="/images/test/wsi.png"
+  src="/images/cancer-detection/wsi.png"
   alt="Example scientific figure"
   caption="Figure 1: A reusable figure component with a caption."
 />
@@ -36,6 +36,7 @@ The dataset underwent expert pathological analysis for the extraction and labeli
 <h2> Model Training and Evaluation </h2>
 
 <p>
+The models are trained for 10 epochs.
 As a loss function Binary Cross Entropy is employed (BCE).
 Given a model $f$ and data points $\{(x_i, y_i)\}_{i=0}^n$,
 the loss function is computed as follows
@@ -86,10 +87,31 @@ Critical for the calculation of these metrics are the following four quantities.
   </li>
 </ul>
 
-<p>
-- ROC - AUC, 
+<p> 
+These quantities are commonly visualized through a confusion matrix.
+Optimally true positives and true negatives should be as high as possible,
+whilst false positives and false negatives should be as low as possible.
+</p>
 
-$$\frac{1}{|P||N|} \sum_{p \in P} \sum_{n \in N} 1_{f(p) > f(n)} + \frac{1}{2} \cdot 1_{f(p) = f(n)}$$
+<Figure
+  src="/images/cancer-detection/confusion-matrix-example.png"
+  alt="An example of an confusion matrix."
+  caption="Figure 1: A reusable figure component with a caption."
+  width="50%"
+/>
+
+<p>
+
+ROC-AUC measures the model’s ability to distinguish between positive and negative samples across all possible classification thresholds. 
+It represents the area under the Receiver Operating Characteristic curve, 
+where a higher value indicates better separation between the two classes.
+Let $P$ denote the set of samples with a positive label associated to them,
+and $N$ those with negative label,
+ROC-AUC is computed as follows
+
+$$ 
+\frac{1}{|N||P|} \sum_{p \in P} \sum_{n \in N} 1_{f(p) > f(n)} + \frac{1}{2} \cdot 1_{f(p) = f(n)} 
+$$
 
 Precision measures the proportion of positive predictions that are actually correct
 
@@ -97,24 +119,210 @@ $$
 \frac{TP}{TP + FP} ~.
 $$
 
-Sensitivity, 
+Specificity measures the proportion of actual negative samples that are correctly classified as negative by the model. 
+It is calculated as the number of true negatives divided by the total number of actual negative samples
 
-$$\frac{TP}{TP + FN}$$
+$$
+\frac{TN}{TN + FP} ~.
+$$
 
-Specifity, 
+Recall measures the proportion of actual positive samples that are correctly identified by the model. 
+It is calculated as the number of true positives divided by the total number of actual positive samples.
 
-$$\frac{TN}{TN + FP}$$
+$$
+\frac{TP}{TP + FN} ~.
+$$
 
-F1 - score, 
+F1-Score measures the balance between precision and recall. 
+It is calculated as the harmonic mean of precision and recall
 
-$$2 \cdot \frac{Precision \cdot Sensitivity}{Precision + Sensitivity}$$
+$$
+2 \cdot \frac{Precision \cdot Recall}{Precision + Recall} ~.
+$$
 
-B - acc, 
+MCC stands for Matthews Correlation Coefficient. It measures the overall quality of a binary classification model by considering true positives, true negatives, false positives, and false negatives. It returns a value between -1 and 1, where 1 indicates perfect classification, 0 indicates random performance, and -1 indicates total disagreement between predictions and true labels.
 
-$$ \frac{1}{2} (Sensitivity + Specifity)$$
+$$
+\frac{TP \cdot TN - FP \cdot FN}{\sqrt{(TP + FP)(TP + FN)(TN + FP)(TN + FN)}} ~.
+$$
 
-MCC, 
+Balanced Accuracy measures the average of sensitivity and specificity. It is especially useful when classes are imbalanced, because it gives equal weight to performance on the positive and negative classes.
 
-$$\frac{TP \cdot TN - FP \cdot FN}{\sqrt{(TP + FP)(TP + FN)(TN + FP)(TN + FN)}}$$
+$$ 
+\frac{1}{2} (Recall + Specifity) ~.
+$$
 
 </p>
+
+<h2> Results from base training </h2>
+
+<p>
+
+</p>
+
+<Figure
+  src="/images/cancer-detection/mmsen-vanilla-results.png"
+  alt="An example of an confusion matrix."
+  caption="Figure 1: A reusable figure component with a caption."
+  width="80%"
+/>
+
+<Figure
+  src="/images/cancer-detection/mmsen-vanilla-confusion-matrix_1epoch.png"
+  alt="An example of an confusion matrix."
+  caption="Figure 1: A reusable figure component with a caption."
+  width="50%"
+/>
+
+<Figure
+  src="/images/cancer-detection/mmsen-vanilla-confusion-matrix_10epochs.png"
+  alt="An example of an confusion matrix."
+  caption="Figure 1: A reusable figure component with a caption."
+  width="50%"
+/>
+
+<h2> Combatting Overfitting through various Regularization Techniques </h2>
+
+<ol> 
+  <li> Data Augmentation </li>
+  <li> Adding more Models to the assembly</li>
+  <li> L1 & L2 weight regularization </li>
+  <li> Lowering the learning rate </li>
+  <li> Reducing the number of parameters </li>
+</ol>
+
+<h3> Data Augmentation </h3>
+
+<p>
+In the paper, the authors describe using random horizontal and vertical flips for data augmentation.
+Additionally, we incorporate random rotations of 90°, 180°, and 270°.
+In theory, this should not introduce any drawbacks, 
+as the orientation of the sample under the microscope during image acquisition is arbitrary and should not affect the tissue characteristics.
+</p>
+
+<Figure
+  src="/images/cancer-detection/mmsen-data_augmentation-results.png"
+  alt="Results for training of MMSEN with data augmentation."
+  caption=""
+  width="100%"
+/>
+
+<p> 
+The test error does not increases less drastically during training.
+The other metrics remain similar.
+</p>
+
+<h3> Adding more models to the assembly </h3>
+
+<p>
+Ensemble models often improve generalization because they combine predictions from multiple independently trained networks instead of relying on a single model.
+We want to test, whether we can improve the generalization capabilities of MMSEN by adding more more models to the assembly.
+To this end, we experiment with two more architectures,
+the AlexNet and ResNet-152.
+While AlexNet is smaller than both of the models employed so far,
+with only 8-layers,
+ResNet-152 comes in with 152 layers.
+</p>
+
+<p>
+AlexNet is a convolutional neural network introduced by Krizhevsky et al. in 2012. 
+The original architecture contains 8 learned layers, 5 convolutional layers followed by 3 fully connected layers. 
+Most notably AlexNet is one of the first architectures to make use of the ReLU activation function.
+</p>
+
+<Figure
+  src="/images/cancer-detection/mmsen-alex-results.png"
+  alt="Results for training of MMSEN with data augmentation."
+  caption=""
+  width="100%"
+/>
+
+<p>
+ResNet-152 is a very deep convolutional neural network introduced by He et al. in the Deep Residual Learning for Image Recognition work, published around 2015. 
+It contains 152 layers and is based on residual connections. 
+These connections allow the network to learn residual mappings, 
+which makes it easier to train very deep models and helps reduce the vanishing-gradient problem.
+</p>
+
+<Figure
+  src="/images/cancer-detection/mmsen-resnet-results.png"
+  alt="Results for training of MMSEN with data augmentation."
+  caption=""
+  width="100%"
+/>
+
+<p>
+Test error and the other metrics remain unchanged. 
+Adding more models to the assembly does not improve generalization capabilities.
+</p>
+
+<h3> Weight Regularization </h3>
+
+<p>
+Let the model parameters be denoted by $\theta$,
+the loss with weight regularization is given by
+
+$$
+l = l_{BCE} + \lambda ||\theta|| ~,
+$$
+
+commonly either the 1 or the 2-norm are employed to this end,
+$\lambda \in \mathbb R$ is a hyperparameter.
+We experiment with both the 1- and the 2-norm.
+For the 1 norm we used the following values $\lambda \in \{0.0005, 0.001, 0.002\}$.
+For the 2-norm we experimented with $\lambda \in \{0.0005, 0.002, 0.01, 0.05, 0.1\}$.
+</p>
+
+<Figure
+  src="/images/cancer-detection/mmsen-l1-results.png"
+  alt="Results for training of MMSEN with data augmentation."
+  caption=""
+  width="100%"
+/>
+
+<Figure
+  src="/images/cancer-detection/mmsen-l2-results.png"
+  alt="Results for training of MMSEN with data augmentation."
+  caption=""
+  width="100%"
+/>
+
+<Figure
+  src="/images/cancer-detection/mmsen-l1_l2-comparison.png"
+  alt="Results for training of MMSEN with data augmentation."
+  caption=""
+  width="100%"
+/>
+
+<Figure
+  src="/images/cancer-detection/mmsen-l2_0005-results.png"
+  alt="Results for training of MMSEN with data augmentation."
+  caption=""
+  width="100%"
+/>
+
+<h3> Reducing the Learning Rate </h3>
+
+We decrease the initial learning rate $\eta_0$ by a factor of 10,
+from $10^{-3}$ to $10^{-4}$.
+
+<Figure
+  src="/images/cancer-detection/mmsen-lower_lr-results.png"
+  alt="Results for training of MMSEN with data augmentation."
+  caption=""
+  width="100%"
+/>
+
+<h3> Reducing the number of Parameters </h3>
+
+<p>
+The base model has a total number of 5250561 tunable parameters.
+We decrease this number to only 2297601, less than half of the original size.
+</p>
+
+<Figure
+  src="/images/cancer-detection/mmsen-small-results.png"
+  alt="Results for training of MMSEN with data augmentation."
+  caption=""
+  width="100%"
+/>
