@@ -9,21 +9,14 @@ import Figure from "../../components/Figure.astro";
 <h2> Introduction </h2>
 
 <p> 
-Breast cancer is the most diagnosed cancer and one of the leading cancer-related deaths among women.
-To obtain definitive diagnosis a probe is extracted from the patient´s tissue. 
-Through a process called digital pathology scanning, recording the tissue at a very high resolution, Whole Slide Images (WSIs) are acquired. 
+Breast cancer is the most diagnosed cancer and one of the leading cancer-related deaths among women. 
+Through a process called digital pathology scanning, 
+whole Slide Images (WSIs) are acquired
+recording potentially cancerous tissue at very high resolution. 
 Skilled physicians are able to make a diagnosis based on examining these images. 
-By leveraging deep learning techniques this process can be assisted or even automated.
-To this end R. Ge et al. propose the Multiscale Multi-head Self-attention Ensemble Network. 
-It is a heterogeneous deep ensemble learning approach. 
-The intermediate feature vectors produced by VGG16 and DenseNet121, pretrained on the ImageNet1k dataset, are combined using a self-attention layer, followed by gloabal avearge pooling. 
-Deep ensemble learning techniques show better generalization capabilities in general.
-
-The model is trained on the PCam benchmark dataset, a binary classification task, images are labeled as 1 if cancerous tissue is present, 0 else. 
-This dataset comprises 400 WSIs from Radboud University Medical Center (RUMC) and University Medical Center Utrecht (UMCU). 
-The dataset underwent expert pathological analysis for the extraction and labeling of diagnostic patches.
+By leveraging deep learning techniques, this process can be assisted or even automated, 
+making diagnosis faster, more cost-effective, and more consistent while helping physicians focus their expertise on the most challenging cases.
 </p>
-
 
 <Figure
   src="/images/cancer-detection/wsi.png"
@@ -31,13 +24,56 @@ The dataset underwent expert pathological analysis for the extraction and labeli
   caption="Figure 1: A reusable figure component with a caption."
 />
 
+<p>
+R. Ge et al. propose the Multiscale Multi-head Self-attention Ensemble Network (MMSEN). 
+It is a heterogeneous deep ensemble learning approach. 
+Ensemble techniques show good generalization capabilities.
+The intermediate feature vectors produced by VGG16 and DenseNet121, 
+pretrained on the ImageNet1k dataset, are combined using a self-attention layer, followed by global average pooling. 
+
+Due to a scarcity of data the authors of the original paper use a five-fold cross validation,
+to train and assess the models performance.
+Here we simply split the data into disjoint train, test and evaluation sets.
+This may be the reason for the large deviation in the results reported by R. Ge et al. and the results we show here.
+
+We train the model on the PCam benchmark dataset,
+while the model achieves high precision and specifity,
+the sensitivity is very low and even degrades further during training.
+This is due to an unsettling high number of false negatives.
+That is patients for whom the cancer would have been remained undetected.
+In order to mend this problem we experiment with different data augmentation and regularization techniques,
+to improve sensitivity.
+
+</p>
+
 <h2> Model Architecture </h2>
+
+The MMSEN architecture employs two deep convolutional backbone networks, VGG16 and DenseNet121, from which intermediate feature representations are extracted. 
+For VGG16, these features have dimensions $3 \times 3 \times 512$, 
+while for DenseNet121 they have dimensions $3 \times 3 \times 1024$. 
+The spatial dimensions are then flattened and treated as a sequence, enabling the use of self-attention. 
+Global average pooling is subsequently applied to reduce the feature representation to a compact vector. 
+Finally, this vector is passed through a linear layer that maps it to a scalar logit, 
+followed by a sigmoid activation to obtain the predicted probability.
+
+<Figure
+  src="/images/cancer-detection/mmsen-architecture.png"
+  alt="An example of an confusion matrix."
+  caption="Image taken from R. Ge et al."
+  width="75%"
+/>
 
 <h2> Model Training and Evaluation </h2>
 
 <p>
+
+The model is trained on the PCam benchmark dataset, a binary classification task, images are labeled as 1 if cancerous tissue is present, 0 else. 
+The dataset comprises 400 WSIs from Radboud University Medical Center (RUMC) and University Medical Center Utrecht (UMCU). 
+The dataset underwent expert pathological analysis for the extraction and labeling of diagnostic patches.
+The WSIs are split into patches of size $96 \times 96$ resulting in a dataset with 327,680 instances.
+
 The models are trained for 10 epochs.
-As a loss function Binary Cross Entropy is employed (BCE).
+As a loss function Binary Cross Entropy (BCE) is employed.
 Given a model $f$ and data points $\{(x_i, y_i)\}_{i=0}^n$,
 the loss function is computed as follows
 
@@ -60,8 +96,10 @@ where $\eta_0 = 0.001$, $\eta_{min} = 0.00001$, $t$ is the current epoch and $T$
 
 <p>
 
-In order to assess the performance of the model,
-7 metrics are employed.
+In order to assess the performance of the model we introduce four metrics,
+namely area under the Receiver Operating Characteristic curve,
+in the following abbreviated by ROC-AUC,
+precision, sensitivity and lastly specifity.
 Critical for the calculation of these metrics are the following four quantities. 
 
 </p>
@@ -88,9 +126,9 @@ Critical for the calculation of these metrics are the following four quantities.
 </ul>
 
 <p> 
-These quantities are commonly visualized through a confusion matrix.
 Optimally true positives and true negatives should be as high as possible,
 whilst false positives and false negatives should be as low as possible.
+These quantities are commonly visualized through a confusion matrix.
 </p>
 
 <Figure
@@ -102,9 +140,8 @@ whilst false positives and false negatives should be as low as possible.
 
 <p>
 
-ROC-AUC measures the model’s ability to distinguish between positive and negative samples across all possible classification thresholds. 
-It represents the area under the Receiver Operating Characteristic curve, 
-where a higher value indicates better separation between the two classes.
+ROC-AUC measures the model’s ability to distinguish between positive and negative samples across all possible classification thresholds,
+a higher value indicates better separation between the two classes.
 Let $P$ denote the set of samples with a positive label associated to them,
 and $N$ those with negative label,
 ROC-AUC is computed as follows
@@ -126,30 +163,11 @@ $$
 \frac{TN}{TN + FP} ~.
 $$
 
-Recall measures the proportion of actual positive samples that are correctly identified by the model. 
+Sensitivity measures the proportion of actual positive samples that are correctly identified by the model. 
 It is calculated as the number of true positives divided by the total number of actual positive samples.
 
 $$
 \frac{TP}{TP + FN} ~.
-$$
-
-F1-Score measures the balance between precision and recall. 
-It is calculated as the harmonic mean of precision and recall
-
-$$
-2 \cdot \frac{Precision \cdot Recall}{Precision + Recall} ~.
-$$
-
-MCC stands for Matthews Correlation Coefficient. It measures the overall quality of a binary classification model by considering true positives, true negatives, false positives, and false negatives. It returns a value between -1 and 1, where 1 indicates perfect classification, 0 indicates random performance, and -1 indicates total disagreement between predictions and true labels.
-
-$$
-\frac{TP \cdot TN - FP \cdot FN}{\sqrt{(TP + FP)(TP + FN)(TN + FP)(TN + FN)}} ~.
-$$
-
-Balanced Accuracy measures the average of sensitivity and specificity. It is especially useful when classes are imbalanced, because it gives equal weight to performance on the positive and negative classes.
-
-$$ 
-\frac{1}{2} (Recall + Specifity) ~.
 $$
 
 </p>
@@ -157,7 +175,17 @@ $$
 <h2> Results from base training </h2>
 
 <p>
-
+We grain the model as described in the previous section.
+As one can see from the graph in the top left corner,
+train error is decreasing over the course of training.
+On the other side,
+the test error is exploding,
+precision and specifity also show unstable behaviour during training,
+they increasing for the first couple of epochs,
+before falling off again.
+Sensitivity,
+as mentioned in the introduction,
+degrades heavily over the course of training.
 </p>
 
 <Figure
@@ -167,21 +195,32 @@ $$
   width="80%"
 />
 
+<p>
+In the two figures below we show the confusion matrix after one and ten epochs of training.
+While false positives decrease slightly and true negatives increase marginally,
+true positive heavily decrease and most unsettling false negatives heavily increase.
+</p>
+
 <Figure
   src="/images/cancer-detection/mmsen-vanilla-confusion-matrix_1epoch.png"
-  alt="An example of an confusion matrix."
-  caption="Figure 1: A reusable figure component with a caption."
+  alt="Confusion matrix after 1 epoch of training."
+  caption="Confusion matrix after 1 epoch of training."
   width="50%"
 />
 
 <Figure
   src="/images/cancer-detection/mmsen-vanilla-confusion-matrix_10epochs.png"
-  alt="An example of an confusion matrix."
-  caption="Figure 1: A reusable figure component with a caption."
+  alt="Confusion matrix after 10 epochs of training."
+  caption="Confusion matrix after 10 epochs of training."
   width="50%"
 />
 
 <h2> Combatting Overfitting through various Regularization Techniques </h2>
+
+<p>
+In this section we examine multiple approaches to prevent overfitting.
+We evaluate their success individually and finally combine methods showing an improvement to a final model.
+</p>
 
 <ol> 
   <li> Data Augmentation </li>
@@ -269,8 +308,11 @@ $$
 commonly either the 1 or the 2-norm are employed to this end,
 $\lambda \in \mathbb R$ is a hyperparameter.
 We experiment with both the 1- and the 2-norm.
+</p>
+
+<p>
 For the 1 norm we used the following values $\lambda \in \{0.0005, 0.001, 0.002\}$.
-For the 2-norm we experimented with $\lambda \in \{0.0005, 0.002, 0.01, 0.05, 0.1\}$.
+We show the results below.
 </p>
 
 <Figure
@@ -280,6 +322,16 @@ For the 2-norm we experimented with $\lambda \in \{0.0005, 0.002, 0.01, 0.05, 0.
   width="100%"
 />
 
+<p>
+For the 1-norm, choosing $\lambda = 0.001$ offers the best trade-off,
+while $0.0005$ reaches the highest precision and a slightly better specifity, 
+$0.001$ is solid throughout all metrics.
+</p>
+
+<p>
+For the 2-norm we experimented with $\lambda \in \{0.0005, 0.002, 0.01, 0.05, 0.1\}$.
+</p>
+
 <Figure
   src="/images/cancer-detection/mmsen-l2-results.png"
   alt="Results for training of MMSEN with data augmentation."
@@ -287,12 +339,23 @@ For the 2-norm we experimented with $\lambda \in \{0.0005, 0.002, 0.01, 0.05, 0.
   width="100%"
 />
 
+<p>
+For the 2-norm we choose $\lambda = 0.005$ as it performs best for all metrics except for sensitivity.
+</p>
+
 <Figure
   src="/images/cancer-detection/mmsen-l1_l2-comparison.png"
   alt="Results for training of MMSEN with data augmentation."
   caption=""
   width="100%"
 />
+
+<p>
+Comparing L1- and L2-regularization, we achieve better results with the latter.
+Lastly comparing L2-regularization to the base model we see clear improvement in ROC-AUC as well as sensitivity,
+and moreover the test error stays constant during training.
+Unfortunately precision and specifity take a small hit.
+</p>
 
 <Figure
   src="/images/cancer-detection/mmsen-l2_0005-results.png"
@@ -313,6 +376,10 @@ from $10^{-3}$ to $10^{-4}$.
   width="100%"
 />
 
+<p>
+All metrics improve or either remain almost on par with the base model.
+</p>
+
 <h3> Reducing the number of Parameters </h3>
 
 <p>
@@ -326,3 +393,102 @@ We decrease this number to only 2297601, less than half of the original size.
   caption=""
   width="100%"
 />
+
+<p>
+The metrics remain almost unchanged.
+Following Occam's razor,
+the smaller model with less parameters should be preferred.
+</p>
+
+<h2> Final Training </h2>
+
+<p>
+We combine all the techniques which lead to an improvement to train a final model.
+We use data augmentation, L2-regularization with $\lambda = 0.005$, a lowered learning rate
+and reduce the number of parameters.
+</p>
+
+<Figure
+  src="/images/cancer-detection/mmsen-final-results.png"
+  alt="Results for training of MMSEN with data augmentation."
+  caption=""
+  width="100%"
+/>
+
+<p>
+The test error is slightly decreasing,
+which is a success compared to the base model,
+where test error is exploding.
+ROC-AUC is also increasing ver the first half of training
+before falling off very slightly and platoeing a little underneath the peak,
+displaying a more stable behaviour compared to the base model.
+Precision is oscillating to some extent and stays below the base model.
+Sensitivity has improved a lot,
+viewed independently it is still too low,
+more than one quarter of positive samples and remain undetected.
+Specificity is still high but drops below that of the base model.
+</p>
+
+<p>
+Lastly we evaluate the performance of the base model and the final model on validation data.
+We show the resulting confusion matrices below.
+</p>
+
+<Figure
+  src="/images/cancer-detection/mmsen-vanilla-eval-confusion-matrix.png"
+  alt="Results for training of MMSEN with data augmentation."
+  caption="Confusion matrix for base model on validation set"
+  width="50%"
+/>
+
+<Figure
+  src="/images/cancer-detection/mmsen-final-eval-confusion-matrix.png"
+  alt="Results for training of MMSEN with data augmentation."
+  caption="Confusion matrix for final model on validation set"
+  width="50%"
+/>
+
+<p>
+First our model also performs decently on the validation data.
+The picture is similar to the test data,
+false negatives are decreased but false positives rise and true negatives drop.
+</p>
+
+<h2> Assessing Model Confidence and Correctness </h2>
+
+<p>
+So far, we have considered the model output only in a binary setting,
+each sample is classified as either negative or positive. However, the model actually
+returns a continuous score in the interval $[0, 1]$. We therefore want to examine
+whether scores closer to the extremes of this interval, that is, closer to $0$ or $1$,
+correspond to more reliable predictions.
+</p>
+
+<p>
+To investigate this, we evaluate the model on the evaluation set once more and
+partition the samples into confidence bins of width $10\%$. For each bin, we compare
+the number of correct detections with the number of incorrect detections.
+</p>
+
+<Figure
+  src="/images/cancer-detection/mmsen-final-confidence_plot1.png"
+  alt="Grouping predictions by the probability assigned by the model,
+  in red absolute number of false predictions, in green absolute number of correct predictions."
+  caption=""
+  width="100%"
+/>
+
+<Figure
+  src="/images/cancer-detection/mmsen-final-confidence_plot2.png"
+  alt="Percentage of correct predictions, grouped by confidence assigned by the model."
+  caption=""
+  width="100%"
+/>
+
+<p>
+The results show that the confidence score returned by the model is informative:
+predictions with higher likelihood values are substantially more likely to be correct.
+In particular, the proportion of correct detections increases toward the upper end of
+the likelihood range, suggesting that the model is not only making binary decisions,
+but also providing a meaningful estimate of prediction confidence.
+</p>
